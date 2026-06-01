@@ -142,8 +142,8 @@ src/
   final_export.py
 
 examples/
-  sample_organizations.xlsx
-  sample_cpv_export.xlsx
+  sample_organizations.csv
+  sample_cpv_export.csv
 
 docs/
   workflow.md
@@ -171,12 +171,14 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-## Example Usage With Synthetic Data
+## Example Data
 
-Run the pipeline against the synthetic sample files:
+The repository includes synthetic CSV examples in `examples/` to document the expected schema without publishing real contacts or procurement exports.
+
+For a runnable local pipeline, use an Excel target organization file and a CSV/XLSX CPV export:
 
 ```powershell
-.\.venv\Scripts\python.exe src/main.py --source-mode local-cpv-file --input "examples/sample_organizations.xlsx" --cpv-file "examples/sample_cpv_export.xlsx" --output "output/sample_pipeline_result.xlsx"
+.\.venv\Scripts\python.exe src/main.py --source-mode local-cpv-file --input "input/your_organizations.xlsx" --cpv-file "examples/sample_cpv_export.csv" --output "output/sample_pipeline_result.xlsx"
 ```
 
 Create the clean outreach workbook from a technical result workbook:
