@@ -1,113 +1,103 @@
 # Public Procurement Contact Intelligence
 
-Turn public procurement records into a structured, source-backed B2B outreach dataset.
+Інструмент для пошуку організацій, які вже закуповували певні послуги через публічні тендери, та підготовки структурованої бази контактів для B2B-комунікації.
 
-## Overview
+## Про Проєкт
 
-Public Procurement Contact Intelligence is a Python-based data pipeline for analyzing public procurement data, identifying organizations with historical purchasing activity in selected service categories, and enriching them with publicly available procurement contact points.
+Цей проєкт показує, як із відкритих закупівельних даних можна отримати практичну бізнес-користь.
 
-The project demonstrates:
+Багато компаній продають послуги організаціям, які вже раніше купували схожі послуги через тендери. Але знайти таких замовників вручну складно: потрібно переглядати сотні або тисячі закупівель, перевіряти організаторів, шукати контакти й відділяти корисні записи від випадкових.
 
-- data ingestion from Excel/CSV exports;
-- entity matching by registration code;
-- public API enrichment;
-- contact quality classification;
-- QA checks;
-- Excel output suitable for review, outreach planning, or CRM import.
+Цей інструмент автоматизує таку роботу. Він бере список цільових організацій, зіставляє його із закупівлями за потрібною категорією послуг, знаходить контактні дані в публічних тендерних записах і формує чистий Excel-файл для подальшої роботи.
 
-The original implementation was built around Prozorro-style procurement data, but the architecture is intentionally useful for similar public procurement and open-data workflows.
+Prozorro використовується як приклад реалізації для українських закупівельних даних. Сам підхід можна адаптувати і до інших систем відкритих закупівель, якщо там є експорт даних, ідентифікатори організацій та доступ до тендерних записів.
 
-## Problem
+## Що Робить Інструмент
 
-Public procurement platforms contain valuable signals about which organizations buy specific services, but the data is fragmented:
+- завантажує список організацій з Excel;
+- нормалізує коди ЄДРПОУ або інші реєстраційні коди;
+- зіставляє організації з історичними закупівлями за CPV-кодом або іншою категорією послуг;
+- шукає контакти в тендерних записах;
+- відокремлює надійні контакти від запасних;
+- показує, які організації ще потребують ручної перевірки;
+- створює фінальний Excel-файл для розсилки, дзвінків, перевірки або імпорту в CRM.
 
-- buyers are listed across many tenders and lots;
-- contact data may be missing from analytics exports;
-- emails may be available only inside individual tender records;
-- raw exports are not directly usable for sales or business development.
+## Приклад Використання
 
-For business teams, this usually turns into manual spreadsheet work: searching tenders, copying contacts, checking whether a buyer is relevant, and separating strong contacts from weak fallback records.
+Наприклад, бюро перекладів може взяти закупівлі за CPV-кодами, пов'язаними з письмовим та усним перекладом, і знайти організації, які вже раніше купували такі послуги.
 
-## Solution
+Після цього інструмент може:
 
-The tool combines a target organization list with CPV-filtered procurement exports, matches entities by registration code, enriches missing contacts through public procurement API records, and produces a clean Excel workbook with separate contact-quality layers.
+1. знайти збіги між цими організаціями та цільовим списком;
+2. отримати email або телефон з публічних тендерних записів;
+3. розділити контакти за якістю;
+4. створити готову таблицю для подальшої комунікації.
 
-The pipeline can:
+Такий самий підхід можна використати не лише для перекладів, а й для інших послуг: IT, консалтинг, навчання, юридичні послуги, маркетинг, технічне обслуговування тощо.
 
-- normalize organization registration codes;
-- parse BI-style procurement exports;
-- match buyers against a target organization list;
-- enrich missing contacts from tender-level API records;
-- optionally add fallback contacts from other recent tenders by the same organization;
-- score each contact by source quality and recency;
-- generate QA sheets that make coverage gaps visible.
+## Як Працює Pipeline
 
-## Use Cases
+1. Завантажується список організацій.
+2. Очищуються та нормалізуються реєстраційні коди.
+3. Завантажується експорт закупівель за потрібною категорією послуг.
+4. Організації зіставляються із закупівлями за ЄДРПОУ або іншим реєстраційним кодом.
+5. Якщо в експорті немає email, інструмент може догрузити контактні дані з публічного API за ID тендера.
+6. Для організацій без email можна виконати fallback-пошук у свіжих закупівлях тієї ж організації.
+7. Контакти розподіляються за якістю.
+8. Створюється фінальний Excel-файл.
 
-- B2B service providers identifying public-sector buyers;
-- sales teams preparing targeted outreach lists;
-- procurement intelligence research;
-- market mapping by CPV/service category;
-- lead enrichment for companies working with public tenders;
-- identifying organizations that previously purchased translation, consulting, IT, legal, training, or other services.
-
-## Example Scenario
-
-A translation company can filter procurement history by CPV codes related to written and oral translation services, match the resulting tenders against a list of target organizers, and build an outreach list with source-backed contact emails.
-
-The same approach can be adapted for other service categories by changing the CPV-filtered input export.
-
-## Workflow
-
-1. Load target organization list.
-2. Normalize registration codes.
-3. Load CPV-filtered procurement export.
-4. Parse buyer name and registration code.
-5. Match buyers with target organizations.
-6. Enrich missing contact details from public tender records.
-7. Add fallback contacts from other procurement records by the same organization.
-8. Classify contacts by source quality.
-9. Export a clean outreach-ready Excel workbook.
-
-## Source Modes
+## Режими Роботи
 
 ### `local-cpv-file`
 
-Recommended for historical analysis. Use a local CPV-filtered export from BI/open-data tooling, then match it against the target organization list.
+Основний режим для історичної вибірки. Спочатку користувач готує локальний експорт закупівель за потрібним CPV або категорією послуг, а скрипт зіставляє цей файл зі списком організацій.
 
-This mode supports both a generic normalized file and a BI Prozorro-style export with Ukrainian column names.
+Цей режим підходить для великих вибірок, де не можна сканувати мільйони тендерів через API.
 
 ### `feed-scan`
 
-Diagnostic mode for scanning the public procurement feed. It can be useful for small recent checks or fallback enrichment, but it is not suitable for deep historical CPV research at large scale.
+Діагностичний режим для обмеженого сканування публічної стрічки закупівель. Його зручно використовувати для коротких перевірок або fallback-пошуку, але не як основний спосіб глибокого історичного пошуку.
 
 ### `cpv-search`
 
-Reserved for a future public API/search endpoint that supports true CPV or query filtering. The public feed API is not suitable for deep historical CPV search without scanning a huge number of tenders.
+Зарезервований режим для випадку, якщо публічний API підтримує прямий пошук за CPV або текстовим запитом. Для Prozorro public feed API такий глибокий CPV-пошук напряму не є практичним без попередньої фільтрації даних.
 
-For large historical selections, use BI Prozorro, an official open-data export, or another pre-filtered CSV/XLSX source.
+## Якість Контактів
 
-## Contact Quality Layers
+Контакти поділяються на кілька рівнів:
 
-- `translation_tender_email` / `service_category_tender_email` - high-confidence contact from a relevant service-category tender;
-- `fallback_procurement_email` - contact from another tender by the same organization;
-- `phone_only` - phone found, no email;
-- `no_contact` - no usable contact found.
+- `service_category_tender_email` або `translation_tender_email` - email знайдено у закупівлі потрібної категорії послуг;
+- `fallback_procurement_email` - email знайдено в іншій закупівлі тієї ж організації;
+- `phone_only` - знайдено телефон, але немає email;
+- `no_contact` - контакт не знайдено.
 
-## Output Workbook
+Це важливо, тому що не всі знайдені контакти мають однакову цінність. Email із релевантної закупівлі надійніший, ніж email із будь-якого іншого тендера організації.
 
-The final outreach workbook is designed for real review work, not debugging. It contains:
+## Результат
 
-- `ready_translation_contacts` - contacts found in relevant service-category tenders;
-- `fallback_contacts_review` - contacts found in other tenders by the same organization;
-- `no_email_to_research` - organizations still requiring manual research;
-- `all_contacts_clean` - one clean row per unique organization;
-- `duplicates` - duplicate registration codes from the input list;
-- `qa_summary` - key coverage and quality metrics.
+Фінальний Excel-файл містить кілька вкладок:
 
-Technical pipeline runs may also produce raw match sheets, cache files, and logs. Those files are local-only and are intentionally excluded from Git.
+- `ready_translation_contacts` - найнадійніші контакти з релевантних закупівель;
+- `fallback_contacts_review` - запасні контакти з інших закупівель тієї ж організації;
+- `no_email_to_research` - організації, для яких email ще потрібно знайти;
+- `all_contacts_clean` - загальна очищена база;
+- `duplicates` - дублікати ЄДРПОУ у вхідному списку;
+- `qa_summary` - коротка статистика покриття.
 
-## Tech Stack
+## Результат Внутрішнього Тесту
+
+В одному реальному внутрішньому запуску інструмент обробив:
+
+- 897 рядків у вхідному списку організацій;
+- 809 унікальних ЄДРПОУ;
+- 6 897 закупівельних лотів за вибраною категорією;
+- 1 398 збігів між організаціями та закупівлями;
+- 1 367 контактів, догружених через API;
+- 715 організацій з email після основного та fallback-пошуку.
+
+Реальні назви організацій, email, кеші, логи та робочі Excel-файли не публікуються в репозиторії.
+
+## Технології
 
 - Python
 - pandas
@@ -115,21 +105,8 @@ Technical pipeline runs may also produce raw match sheets, cache files, and logs
 - requests
 - tenacity
 - tqdm
-- public procurement API records
-- Excel/CSV exports
-
-## Results From Real-World Internal Run
-
-In one internal run on a real procurement dataset, the pipeline processed:
-
-- 897 input organization rows;
-- 809 unique organization registration codes;
-- 6,897 CPV-filtered procurement lots;
-- 1,398 matched procurement records;
-- 1,367 API-enriched tender contacts;
-- 715 organizations with a usable primary email after fallback enrichment.
-
-This repository does not include real organization names, real contact emails, real procurement exports, cache files, or generated outreach workbooks.
+- Excel / CSV exports
+- Public procurement API
 
 ## Repository Layout
 
@@ -171,46 +148,48 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-## Example Data
+## Usage
 
-The repository includes synthetic CSV examples in `examples/` to document the expected schema without publishing real contacts or procurement exports.
+### Синтетичні Приклади
 
-For a runnable local pipeline, use an Excel target organization file and a CSV/XLSX CPV export:
+У `examples/` є синтетичні CSV-файли, які показують очікувану структуру даних без публікації реальних контактів або закупівельних експортів.
+
+Для локального запуску використовуйте власний Excel-файл зі списком організацій і CSV/XLSX-експорт закупівель:
 
 ```powershell
 .\.venv\Scripts\python.exe src/main.py --source-mode local-cpv-file --input "input/your_organizations.xlsx" --cpv-file "examples/sample_cpv_export.csv" --output "output/sample_pipeline_result.xlsx"
 ```
 
-Create the clean outreach workbook from a technical result workbook:
+Створення чистого фінального Excel-файлу з технічного результату:
 
 ```powershell
 .\.venv\Scripts\python.exe src/final_export.py --source "output/sample_pipeline_result.xlsx" --output "output/sample_final_contacts.xlsx"
 ```
 
-## Usage With Your Own Data
+### Запуск З Власними Даними
 
-Place private input files in `input/`. They are ignored by Git.
+Приватні робочі файли потрібно зберігати в `input/`. Вони ігноруються Git.
 
 ```powershell
 .\.venv\Scripts\python.exe src/main.py --source-mode local-cpv-file --input "input/your_organizations.xlsx" --cpv-file "input/your_cpv_export.xlsx" --output "output/contacts_with_sources.xlsx" --enrich-missing-contacts
 ```
 
-For fallback enrichment from recent tenders:
+Fallback-пошук контактів у свіжих закупівлях тієї ж організації:
 
 ```powershell
 .\.venv\Scripts\python.exe src/main.py --source-mode local-cpv-file --input "input/your_organizations.xlsx" --cpv-file "input/your_cpv_export.xlsx" --output "output/contacts_with_fallback.xlsx" --enrich-missing-contacts --fallback-feed-for-no-match --fallback-min-date-modified 2024-01-01 --fallback-limit-pages 3000
 ```
 
-## Required Input Columns
+### Очікувані Колонки
 
-The target organization file should contain:
+Файл зі списком організацій:
 
 - `Організатор`
 - `ЄДРПОУ`
 
-The generic CPV export should contain:
+Generic CPV/export файл:
 
-- `tender_id` or `tender_internal_id`
+- `tender_id` або `tender_internal_id`
 - `tender_title`
 - `procuring_entity_name`
 - `procuring_entity_edrpou`
@@ -221,19 +200,28 @@ The generic CPV export should contain:
 - `procurement_method_type`
 - `cpv`
 
-The BI Prozorro-style export can use Ukrainian column names such as `Ідентифікатор лота`, `Лот`, `Організатор`, and `Класифікація CPV`.
+BI Prozorro export також може містити українські назви колонок:
 
-## Responsible Use
+- `Ідентифікатор лота`
+- `Лот`
+- `Процедура закупівлі`
+- `Дата оголошення лота`
+- `Організатор`
+- `Класифікація CPV`
 
-This tool is designed for responsible use with public procurement data. Users should comply with applicable data protection, anti-spam, public procurement, and business communication rules.
+## Відповідальне Використання
 
-The repository must not contain real contact datasets, exported email lists, private procurement exports, generated outreach files, caches, or logs.
+Проєкт призначений для роботи з відкритими закупівельними даними та підготовки релевантної B2B-комунікації.
 
-## What This Project Demonstrates
+Не варто використовувати його для масового спаму. Реальні email-бази, приватні Excel-файли, кеші та результати обробки не повинні зберігатися в публічному репозиторії.
 
-- turning messy public data into business-ready datasets;
-- practical entity matching;
-- API-based data enrichment;
-- QA-first Excel generation;
-- source-backed contact confidence scoring;
-- automation of a previously manual business-development workflow.
+Користувач має самостійно дотримуватися правил захисту персональних даних, закупівельного, антимонопольного та антиспам-законодавства у своїй юрисдикції.
+
+## Що Демонструє Цей Проєкт
+
+- перетворення відкритих даних у бізнес-інструмент;
+- автоматизацію ручного пошуку організацій і контактів;
+- зіставлення даних з різних джерел;
+- API-збагачення;
+- контроль якості результату;
+- створення Excel-файлу, з яким реально може працювати команда продажів або розвитку бізнесу.
